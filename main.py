@@ -1,10 +1,16 @@
+# @File: main.py
+# @Author: Aoran Li
+# @Last Edit Date: 2023-03-31
+
 import arcade
 import arcade.key as keys
 import math
 from grid import Grid
 from layer_util import get_layers, Layer
 from layers import lighten
-
+from action import *
+from undo import UndoTracker
+from replay import ReplayTracker
 class MyWindow(arcade.Window):
     """ Painter Window """
 
@@ -287,52 +293,112 @@ class MyWindow(arcade.Window):
 
     def on_init(self):
         """Initialisation that occurs after the system initialisation."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        self.undo_tracker = UndoTracker()
+        self.replay_tracker = ReplayTracker()
 
     def on_reset(self):
         """Called when a window reset is requested."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        self.grid.initialize(MyWindow.GRID_SIZE_X, MyWindow.GRID_SIZE_Y)
 
     def on_paint(self, layer: Layer, px, py):
         """
         Called when a grid square is clicked on, which should trigger painting in the vicinity.
-        Vicinity squares outside of the range [0, GRID_SIZE_X) or [0, GRID_SIZE_Y) can be safely ignored.
+        Vicinity squares outside the range [0, GRID_SIZE_X) or [0, GRID_SIZE_Y) can be safely ignored.
 
         layer: The layer being applied.
         px: x position of the brush.
         py: y position of the brush.
         """
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(n^2)
+        """
+        distance = self.grid.brush_size
+        # Create a painting operation
+        paint_action = PaintAction(is_special = False)
+        # #Traverse the grid range that needs to be painted
+        for x in range(max(0, px - distance), min(px + distance + 1, self.GRID_SIZE_X)):
+            # Calculate the y range to be painted under the current x coordinate
+            y_paint = distance - abs(px - x)
+            # Traverse the y coordinate that needs to be painted
+            for y in range(max(0, py - y_paint), min(py + y_paint + 1, self.GRID_SIZE_Y)):
+                # Add the layer to the grid
+                if self.grid[x][y].add(layer):
+                        paint_action.steps.append(PaintStep((x, y), layer))
+        # Add painting operations to the Undo Tracker and Replay Tracker
+        self.undo_tracker.add_action(paint_action)
+        self.replay_tracker.add_action(paint_action, False)
 
     def on_undo(self):
         """Called when an undo is requested."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        paint_action = self.undo_tracker.undo(self.grid)
+        self.replay_tracker.add_action(paint_action, True)
 
     def on_redo(self):
         """Called when a redo is requested."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        self.undo_tracker.redo(self.grid)
 
     def on_special(self):
         """Called when the special action is requested."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        self.grid.special()
+        # Add a special action to the Undo Tracker and Replay Tracker
+        self.undo_tracker.add_action(PaintAction(None, True))
+        self.replay_tracker.add_action(PaintAction(None, True))
 
     def on_replay_start(self):
         """Called when the replay starting is requested."""
-        pass
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        self.on_reset
+        self.replay_tracker.start_replay()
 
     def on_replay_next_step(self) -> bool:
         """
         Called when the next step of the replay is requested.
         Returns whether the replay is finished.
         """
-        return True
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
+        return self.replay_tracker.play_next_action(self.grid)
 
     def on_increase_brush_size(self):
         """Called when an increase to the brush size is requested."""
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
         self.grid.increase_brush_size()
 
     def on_decrease_brush_size(self):
         """Called when a decrease to the brush size is requested."""
+        """
+        Best Complexity: O(1)
+        Worst Complexity: O(1)
+        """
         self.grid.decrease_brush_size()
 
 def main():
